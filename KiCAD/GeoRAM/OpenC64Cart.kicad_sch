@@ -5,11 +5,10 @@
   (paper "A3")
 
   (title_block
-    (title "OpenC64Cart: C64 8K Lo/Hi-Rom Cartridge")
-    (date "2018-01-04")
-    (rev "2")
-    (company "SukkoPera")
-    (comment 1 "Thanks to http://blog.worldofjani.com/?p=879")
+    (title "GEORAM Clone")
+    (date "2023-01-09")
+    (rev "0")
+    (company "Home Computer Group")
   )
 
   (lib_symbols
