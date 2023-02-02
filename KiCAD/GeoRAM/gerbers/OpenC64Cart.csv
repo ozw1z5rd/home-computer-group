@@ -1,0 +1,11 @@
+"Id";"Designator";"Package";"Quantity";"Designation";"Supplier and ref";
+1;"U3";"DIP-14_W7.62mm";1;"74HC00";;;
+2;"C8,C1,C2,C3,C4,C5,C7";"C_Disc_D3.0mm_W1.6mm_P2.50mm";7;"100n";;;
+3;"U7";"C64-Cart";1;"C64-Exp-Port";;;
+4;"SRAM1";"DIP-32_W15.24mm";1;"HM628512CLP-5";;;
+5;"U1";"DIP-14_W7.62mm";1;"74HC04";;;
+6;"H1";"MountingHole_5.5mm";1;"MountingHole";;;
+7;"U4";"DIP-20_W7.62mm";1;"74HC573";;;
+7;"U5";"DIP-20_W7.62mm";1;"74HC573";;;
+8;"U2";"DIP-14_W7.62mm";1;"74HC08";;;
+9;"U6";"DIP-20_W7.62mm";1;"74HC245";;;
