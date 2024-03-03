@@ -23,12 +23,12 @@ georam.o: georam.s
 
 # driver 
 c64-georam.o: c64-georam.s 
-	ca65 -t c64 -o c64-georam.o  c64-georam.s
+	ca65 -t c64 -o c64-georam.o  -l c64-georam.l c64-georam.s
 
 # c64.lib contains the EXEHDR stuff, the c64-asm.cfg contains anything required 
 # to correcly produce a working PRG file.
 georam.prg: georam.o c64-georam.o 
-	ld65 -o georam.prg  -C c64-asm.cfg  -u __EXEHDR__ --lib c64.lib georam.o c64-georam.o 
+	ld65 -o georam.prg  -C c64-asm.cfg  -u __EXEHDR__ --lib c64.lib -m georam.m georam.o c64-georam.o 
 
 # 
 # HELLO WORLD
@@ -40,4 +40,4 @@ print.prg: print.o
 	cl65 -o print.prg -u __EXEHDR__ -t c64 -C c64-asm.cfg print.s
 
 clean:
-	rm -f -v print.prg assembler.d64 print.l print.m georam.o georam.l c64-georam.o c64-georam.l georam.prg print.o
+	rm -f -v print.prg assembler.d64 print.l print.m georam.o georam.l c64-georam.o c64-georam.l georam.prg print.o georam.m

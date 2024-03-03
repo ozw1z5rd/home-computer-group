@@ -20,15 +20,6 @@
 .export   COPYFROM
 .export   COPYTO
 
-;
-; Assign unused zero page location to driver's variables
-;
-.define ptr1 $02
-.define ptr2 $FB
-.define ptr3 $FC
-.define tmp1 $FD
-.define tmp2 $FE
-
 ; ------------------------------------------------------------------------
 ; Constants
 
@@ -42,6 +33,19 @@ GR_PAGE_HI      = $DFFF                 ; Page register high
 .data
 
 pagecount:      .res    2               ; Number of available pages
+;
+; variables used by the driver's code.
+;
+.define 	ptr1  $F7		; general purpose pointer 1 
+.define         ptr2  $F9               ; general purpose pointer 2 
+.define         ptr3  $FB		; general purpose pointer 3
+.define         tmp1  $FD		; temporary 1 
+.define 	tmp2  $22 		; temporary 2
+
+; $F7-$F8 -> RS232 input buffer
+; $F9-$FA -> RS232 output buffer 
+; $FB-$FE -> 4 bytes unused
+; $22-$25 -> 4 bytes for temporary operations
 
 .code
 
