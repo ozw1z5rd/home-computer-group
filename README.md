@@ -1,3 +1,5 @@
+![Logo](http://raw.githubusercontent.com/ozw1z5rd/home-computer-group/master/images/LOGO.png?sanitize=true&raw=true)
+
 # Home-Computer-Group
 
 * ARM_ASM contains assembler programs you can run on Raspberry PI / PICO PI
