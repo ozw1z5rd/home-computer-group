@@ -1,0 +1,7 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "OpenC64Cart-rescue")(type "Legacy")(uri "${KIPRJMOD}/GeoRAM-rescue.lib")(options "")(descr ""))
+  (lib (name "C64-Exp-Port1")(type "Legacy")(uri "${KIPRJMOD}/lib/C64-Exp-Port.lib")(options "")(descr ""))
+  (lib (name "C64-Exp-Port")(type "KiCad")(uri "${KIPRJMOD}/lib/C64-Exp-Port.kicad_sym")(options "")(descr ""))
+  (lib (name "c64_cartridge_expansion")(type "KiCad")(uri "/Users/bigfoot/Developer/home-computer-group/KiCAD/Libraries/c64_cartridge_expansion.kicad_sym")(options "")(descr ""))
+)
