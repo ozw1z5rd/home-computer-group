@@ -52,7 +52,43 @@ entry:
 	.byte "home computer group 2024", 13, 0 
         jsr wait_space
 ;
-; Inizialize the EM strucy
+; check for GeoRAM presence
+;
+	jsr INSTALL
+        cpx #EM_ERR_NO_DEVICE
+        bne size
+        PRINT err_message
+        jmp exit
+;
+; RAM found, get the size
+;
+
+size:
+        PRINT message
+        jsr PAGECOUNT
+
+        tay
+        txa
+        pha
+        tya
+        tax
+        pla
+
+        jsr $BDCD
+
+        PRINT press_space
+        jsr wait_space
+	jmp demo
+
+exit:   
+        rts
+
+
+
+
+demo:
+;
+; Inizialize the EM struct
 ;
 	lda #$00
 	sta my_em_copy + EM_COPY::BUF
@@ -68,6 +104,9 @@ entry:
 	lda #$03	
 	sta my_em_copy + EM_COPY::COUNT + 1 
 
+;
+; Saves a number of screens into the GeoRAM
+;
 
 	ldx #$10
 loop_f:
@@ -86,6 +125,12 @@ loop_f:
 	.byte 147, "screens saved on the expansion", 13, "press *space* to replay", 13, 0
 	jsr wait_space
 
+
+;
+; Screens replay
+;
+
+
 	ldx #$00
 	stx my_em_copy + EM_COPY::PAGE
 	stx my_em_copy + EM_COPY::PAGE + 1
@@ -103,12 +148,12 @@ replay:
 	bne replay
 	jmp exit
 
-        jsr INSTALL
-        cpx #EM_ERR_NO_DEVICE
-        bne size
-        PRINT err_message
-        jmp exit
 
+
+;
+; Routine to store a screen on the GeoRAM
+; the page is incremented after the saving
+;
 
 save_screen:
 	pha
@@ -132,6 +177,10 @@ save_screen:
 	pla
 	rts
 
+;
+; Routine to recall a screen from the GeoRAM
+; the page in incremented after the recall
+;
 
 recall_screen:
 
@@ -158,28 +207,8 @@ recall_screen:
 
 
 ;
-; RAM found, get the size
+; fill the screen with a single charater
 ;
-
-size:
-        PRINT message
-        jsr PAGECOUNT
-
-        tay
-        txa
-        pha
-        tya
-        tax
-        pla
-
-        jsr $BDCD
-
-        PRINT press_space
-        jsr wait_space
-
-exit:   
-        rts
-        
          
 fill:
 	lda #$00
