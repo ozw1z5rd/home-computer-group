@@ -28,7 +28,7 @@
 my_em_copy:
 	.tag EM_COPY
 
-;.struct MY_EM_COPY
+;.struct EM_COPY
 ;        BUF     .addr
 ;        OFFS    .byte
 ;        PAGE    .word
@@ -48,7 +48,8 @@ my_em_copy:
 
 entry:
         jsr printimm
-        .byte "georam demo in assembler", 13, "press *space* to continue", 13 ,0
+        .byte "georam demo in assembler", 13, "press *space* to continue", 13, 13
+	.byte "home computer group 2024", 13, 0 
         jsr wait_space
 ;
 ; Inizialize the EM strucy
@@ -63,9 +64,9 @@ entry:
 	sta my_em_copy + EM_COPY::PAGE + 1 
 	sta my_em_copy + EM_COPY::UNUSED 
 	lda #$E8
-	sta my_em_copy + EM_COPY::PAGE 
+	sta my_em_copy + EM_COPY::COUNT
 	lda #$03	
-	sta my_em_copy + EM_COPY::PAGE + 1 
+	sta my_em_copy + EM_COPY::COUNT + 1 
 
 
 	ldx #$10
@@ -82,7 +83,7 @@ loop_f:
 	bne loop_f
 
 	jsr printimm
-	.byte 147, "screens saved on the expansion", 13, "press *space* to continue", 13, 0
+	.byte 147, "screens saved on the expansion", 13, "press *space* to replay", 13, 0
 	jsr wait_space
 
 	ldx #$00
