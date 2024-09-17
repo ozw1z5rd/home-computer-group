@@ -19,10 +19,12 @@
 struct em_copy emd;
 uint16_t page = 0; 
 
-extern void _OVERLAY1_LOAD__, _OVERLAY1_SIZE__; 
-extern void _OVERLAY2_LOAD__, _OVERLAY2_SIZE__;
+extern void _OVERLAY2_LOAD__[], _OVERLAY2_SIZE__[];
+extern void _OVERLAY1_LOAD__[], _OVERLAY1_SIZE__[];
+
 
 extern int _curunit;
+extern int overlay2();
 extern int overlay1();
 
 /*
