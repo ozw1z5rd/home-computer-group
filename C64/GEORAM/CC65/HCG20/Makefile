@@ -14,12 +14,12 @@ export LC65_CFG=./
 export CC65_INC=/usr/local/Cellar/cc65/2.19/share/cc65/include
 
 demo.d64: ovrldemo.prg
-	$(C1541) -format "georam-test,00" d64 assembler.d64
-	$(C1541) -attach assembler.d64 -write ovrldemo
-	$(C1541) -attach assembler.d64 -write ovrldemo.1
-	$(C1541) -attach assembler.d64 -write ovrldemo.2
-	$(C1541) -attach assembler.d64 -write ovrldemo.3
-	$(C1541) -attach assembler.d64 -write c64-georam.emd
+	$(C1541) -format "georam-test,00" d64 ovrldemo.d64
+	$(C1541) -attach ovrldemo.d64 -write ovrldemo
+	$(C1541) -attach ovrldemo.d64 -write ovrldemo.1
+	$(C1541) -attach ovrldemo.d64 -write ovrldemo.2
+	$(C1541) -attach ovrldemo.d64 -write ovrldemo.3
+	$(C1541) -attach ovrldemo.d64 -write c64-georam.emd
 
 
 # main application with overlay modules
