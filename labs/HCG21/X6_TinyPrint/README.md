@@ -1,5 +1,7 @@
 # X6 TinyPrint
 
+![X6 TinyPrint](images/IMG_4314.jpg)
+
 Print text and images on the **X6h "cat printer"** thermal printer (the *Tiny Print*
 mobile app) over **Bluetooth Low Energy**, from macOS.
 
