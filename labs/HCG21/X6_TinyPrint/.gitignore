@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# previews / dumps
+*.pbm
+*.dump
