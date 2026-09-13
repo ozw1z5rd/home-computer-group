@@ -97,6 +97,7 @@ line 2" | ./catprint.sh
 | `--address` | – | device UUID (skips scanning) |
 | `--retries` | 4 | connection attempts |
 | `--delay` | 0.0 | seconds to wait before disconnecting the printer |
+| `--info` | – | connect, print firmware/battery/paper status, then exit |
 | `--no-dither` | – | disable dithering (on by default for images) |
 | `--zx-screen` | off | treat the image as a ZX 256x192 screen (inverted, 1:1) |
 | `--verbose` | off | show printer notifications |
@@ -121,6 +122,10 @@ line 2" | ./catprint.sh
   through the system fonts.
 - `--zx-screen` maps a ZX screen 1:1; with the 384-dot head, 32 columns are
   1.5x, 24 columns are exactly 2x, 48 columns are 1:1.
+- Before printing, the printer state is queried: if it reports **no paper**
+  (status bit `0x10`) the job aborts instead of printing into the void.
+- `--info` reads the `0xA3` state: `battery` is the cell voltage in tenths of a
+  volt (e.g. `3.7 V`), `paper` comes from status bit `0x10`.
 
 ## Acknowledgements
 
@@ -230,6 +235,7 @@ riga 2" | ./catprint.sh
 | `--address` | – | UUID del dispositivo (salta la scansione) |
 | `--retries` | 4 | tentativi di connessione |
 | `--delay` | 0.0 | secondi di attesa prima di scollegare la stampante |
+| `--info` | – | si collega, mostra firmware/batteria/carta, ed esce |
 | `--no-dither` | – | disattiva il dithering (attivo di default per le immagini) |
 | `--zx-screen` | off | tratta l'immagine come schermata ZX 256x192 (invertita, 1:1) |
 | `--verbose` | off | mostra le notifiche della stampante |
@@ -254,6 +260,10 @@ riga 2" | ./catprint.sh
   Unicode funzionano tramite i font di sistema.
 - `--zx-screen` mappa la schermata ZX 1:1; con la testina da 384 dot, 32 colonne
   sono 1.5x, 24 colonne sono esattamente 2x, 48 colonne sono 1:1.
+- Prima di stampare viene letto lo stato: se la stampante segnala **carta
+  finita** (bit `0x10`) il lavoro si interrompe invece di stampare a vuoto.
+- `--info` legge lo stato `0xA3`: `battery` è la tensione della cella in decimi
+  di volt (es. `3.7 V`), `paper` deriva dal bit di stato `0x10`.
 
 ## Riconoscimenti
 

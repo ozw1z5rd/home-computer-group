@@ -259,6 +259,7 @@ class Printer:
         self.client = client
         self.verbose = verbose
         self._paused = False
+        self.state = None
 
     def _on_notify(self, _char, data):
         payload = bytes(data)
@@ -266,6 +267,9 @@ class Printer:
             self._paused = True
         elif payload == FLOW_RESUME:
             self._paused = False
+        elif (len(payload) >= 8 and payload[0:3] == MAGIC + bytes([CMD_STATE])
+                and payload[3] == 1):
+            self.state = payload[6:-2]
         elif self.verbose and payload:
             print("  notify: %s" % payload.hex(), file=sys.stderr)
 
@@ -280,6 +284,16 @@ class Printer:
     # --- commands ---
     async def get_device_state(self):
         await self._write(command(CMD_STATE, b"\x00"))
+
+    async def read_state(self, tries=20):
+        """Query the printer state and return its payload, or None."""
+        self.state = None
+        await self.get_device_state()
+        for _ in range(tries):
+            if self.state is not None:
+                return self.state
+            await asyncio.sleep(0.05)
+        return None
 
     async def set_dpi(self):
         await self._write(command(CMD_DPI, b"\x32"))
@@ -407,8 +421,14 @@ async def show_info(args):
                 print("  %-8s    payload: %s" % ("", payload.hex(" ")))
                 if cmd == CMD_STATE and len(payload) >= 3:
                     paper = "OUT" if payload[1] & 0x10 else "ok"
-                    print("  %-8s    counter=%d  flags=0x%02X  level=%d  paper=%s"
-                          % ("", payload[0], payload[1], payload[2], paper))
+                    print("  %-8s    counter=%d  flags=0x%02X  paper=%s"
+                          % ("", payload[0], payload[1], paper))
+                    volts = payload[2]
+                    bars = (5 if volts >= 41 else 4 if volts >= 39 else
+                            3 if volts >= 38 else 2 if volts >= 37 else
+                            1 if volts >= 35 else 0)
+                    print("  %-8s    battery=%d.%d V (%d/5)"
+                          % ("", volts // 10, volts % 10, bars))
             for text in pretty_ascii(b"".join(replies)):
                 print("  %-8s    text: %r" % ("", text))
             replies.clear()
@@ -497,6 +517,19 @@ async def run(args):
         printer = Printer(client, verbose=args.verbose)
         await printer.start()
         await asyncio.sleep(0.5)
+
+        state = await printer.read_state()
+        if state is None:
+            print("Warning: no state reply from the printer", file=sys.stderr)
+        else:
+            flags = state[1] if len(state) > 1 else 0
+            level = state[2] if len(state) > 2 else -1
+            if args.verbose:
+                print("  state: flags=0x%02X level=%d" % (flags, level),
+                      file=sys.stderr)
+            if flags & 0x10:
+                raise SystemExit("Printer reports NO PAPER. Load paper and retry.")
+
         await printer.print_bitmap(bitmap, args.feed, energy, speed, row_delay,
                                    args.pad_bottom)
         await asyncio.sleep(1.0)
