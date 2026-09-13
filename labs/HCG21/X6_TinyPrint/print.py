@@ -408,8 +408,7 @@ async def show_info(args):
         await client.start_notify(RX_UUID, lambda _c, d: replies.append(bytes(d)))
         await asyncio.sleep(0.4)
         for label, cmd, payload in (("state", CMD_STATE, b"\x00"),
-                                    ("info", 0xA8, b"\x00"),
-                                    ("battery", 0xBA, b"\x00")):
+                                    ("info", 0xA8, b"\x00")):
             await client.write_gatt_char(TX_UUID, command(cmd, payload), response=False)
             await asyncio.sleep(0.6)
             raw = " ".join(r.hex() for r in replies) or "(no reply)"
