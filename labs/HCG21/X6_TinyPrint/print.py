@@ -363,7 +363,63 @@ async def list_devices():
         print("%-40s %s" % (dev.address, dev.name or "(no name)"))
 
 
+def pretty_ascii(data):
+    """Extract printable ASCII runs (>=3 chars) from a raw reply."""
+    out, cur = [], ""
+    for b in bytes(data):
+        if 32 <= b < 127:
+            cur += chr(b)
+        else:
+            if len(cur) >= 3:
+                out.append(cur)
+            cur = ""
+    if len(cur) >= 3:
+        out.append(cur)
+    return out
+
+
+async def show_info(args):
+    """Connect to the printer and read its status (same BLE link the app uses)."""
+    target = args.address or await find_device(args.device)
+    if target is None:
+        raise SystemExit(
+            "Printer '%s' not found. Is it on and NOT already connected "
+            "to the phone app? (BLE allows one connection at a time)" % args.device)
+    replies = []
+
+    async with BleakClient(target, timeout=30) as client:
+        print("Connected to %s" % args.device)
+        for service in client.services:
+            print("  service %s" % service.uuid)
+        await client.start_notify(RX_UUID, lambda _c, d: replies.append(bytes(d)))
+        await asyncio.sleep(0.4)
+        for label, cmd, payload in (("state", CMD_STATE, b"\x00"),
+                                    ("info", 0xA8, b"\x00"),
+                                    ("battery", 0xBA, b"\x00")):
+            await client.write_gatt_char(TX_UUID, command(cmd, payload), response=False)
+            await asyncio.sleep(0.6)
+            raw = " ".join(r.hex() for r in replies) or "(no reply)"
+            print("  %-8s -> %s" % (label, raw))
+            for report in replies:
+                payload = bytes(report)[6:-2]
+                if not payload:
+                    continue
+                print("  %-8s    payload: %s" % ("", payload.hex(" ")))
+                if cmd == CMD_STATE and len(payload) >= 3:
+                    paper = "OUT" if payload[1] & 0x10 else "ok"
+                    print("  %-8s    counter=%d  flags=0x%02X  level=%d  paper=%s"
+                          % ("", payload[0], payload[1], payload[2], paper))
+            for text in pretty_ascii(b"".join(replies)):
+                print("  %-8s    text: %r" % ("", text))
+            replies.clear()
+        if args.delay:
+            await asyncio.sleep(args.delay)
+
+
 async def run(args):
+    if args.info:
+        await show_info(args)
+        return
     text = ""
     if args.file:
         text = open(args.file, "r", encoding="utf-8").read()
@@ -444,6 +500,8 @@ async def run(args):
         await printer.print_bitmap(bitmap, args.feed, energy, speed, row_delay,
                                    args.pad_bottom)
         await asyncio.sleep(1.0)
+        if args.delay:
+            await asyncio.sleep(args.delay)
     finally:
         try:
             await client.disconnect()
@@ -464,6 +522,8 @@ def build_parser():
     p.add_argument("--device", default=DEFAULT_NAME, help="printer Bluetooth name")
     p.add_argument("--address", help="device address/UUID (skips scanning)")
     p.add_argument("--list", action="store_true", help="list BLE devices and exit")
+    p.add_argument("--info", action="store_true",
+                   help="connect and read printer status/info, then exit")
     p.add_argument("--font", default="regular", choices=sorted(set(FONTS) | {"zx"}),
                    help="font ('zx' = ZX Spectrum font)")
     p.add_argument("--zx-cols", type=int, default=32,
@@ -493,6 +553,8 @@ def build_parser():
     p.add_argument("--pad-bottom", type=int, default=24,
                    help="trailing blank rows to compensate for dropped rows")
     p.add_argument("--retries", type=int, default=4, help="connection attempts")
+    p.add_argument("--delay", type=float, default=0.0,
+                   help="seconds to wait before disconnecting the printer")
     p.add_argument("--no-dither", action="store_false", dest="dither",
                    help="disable dithering (on by default for images)")
     p.add_argument("--zx-screen", action="store_true",

@@ -96,6 +96,7 @@ line 2" | ./catprint.sh
 | `--device` | X6h-0000 | Bluetooth name |
 | `--address` | – | device UUID (skips scanning) |
 | `--retries` | 4 | connection attempts |
+| `--delay` | 0.0 | seconds to wait before disconnecting the printer |
 | `--no-dither` | – | disable dithering (on by default for images) |
 | `--zx-screen` | off | treat the image as a ZX 256x192 screen (inverted, 1:1) |
 | `--verbose` | off | show printer notifications |
@@ -228,6 +229,7 @@ riga 2" | ./catprint.sh
 | `--device` | X6h-0000 | nome Bluetooth |
 | `--address` | – | UUID del dispositivo (salta la scansione) |
 | `--retries` | 4 | tentativi di connessione |
+| `--delay` | 0.0 | secondi di attesa prima di scollegare la stampante |
 | `--no-dither` | – | disattiva il dithering (attivo di default per le immagini) |
 | `--zx-screen` | off | tratta l'immagine come schermata ZX 256x192 (invertita, 1:1) |
 | `--verbose` | off | mostra le notifiche della stampante |
