@@ -13,6 +13,20 @@ Made by **Home Computer Group** — part of the HCG21 labs.
 
 # English
 
+## Versions
+
+This repo ships **two** drivers for the same printer, sharing the same BLE
+transport, rendering and state decoding:
+
+- **v1** — `print.py` / `catprint.sh`: the original, self-contained driver.
+- **v2** — `print2.py` / `catprint2.sh`: the same output features, but its
+  print pipeline is **derived from the TiMini-Print project**
+  (https://github.com/Dejniel/TiMini-Print, Apache-2.0) and follows TiMini's
+  `tiny` command dialect for the X6h.
+
+Everything below describes **v1**; the v2 differences and options are in
+[Version 2 — TiMini-Print based](#version-2--timini-print-based).
+
 ## Why it's not "simple"
 
 The X6h **does not speak ESC/POS**: it is a **raster** printer using a
@@ -127,8 +141,66 @@ line 2" | ./catprint.sh
 - `--info` reads the `0xA3` state: `battery` is the cell voltage in tenths of a
   volt (e.g. `3.7 V`), `paper` comes from status bit `0x10`.
 
+## Version 2 — TiMini-Print based
+
+`print2.py` (launcher `catprint2.sh`) reuses the protocol code of the
+**TiMini-Print** project (https://github.com/Dejniel/TiMini-Print, Apache-2.0)
+and follows its `tiny` command dialect for the X6h. BLE transport, rendering and
+the `0xA3` state decoding are the same as v1.
+
+### Differences vs `print.py` (v1)
+
+| Aspect | v1 (`print.py`) | v2 (`print2.py`) |
+|---|---|---|
+| `0xA4` | "DPI", fixed `0x32` | **blackening** `0x30 + level` (1-5) |
+| `0xBE` | "apply energy", always `0x01` | **print mode** `1`=text / `0`=image |
+| Scanlines | raw `0xA2` only (bit-reversed) | **RLE `0xBF`** when shorter, else `0xA2` |
+| `0xBD` | speed setup only | setup + **feed every 200 rows** |
+| `0xA6` | **start/end lattice** (`AA 55 …`) | not used |
+| End of page | blank `0xA2` rows (`--feed`, `--pad-bottom`) | `0xBD` + `0xA1`x2 + `0xBD` + `0xA3` |
+| Energy | `--strength 1-7` (8000…30000) | `--profile {d1,x6h}` + `--energy` |
+| Paper motion | – | `--feed` / `--retract` (`0xA1`/`0xA0`) |
+
+Identical in both: packet framing (`51 78 cmd 00 len crc8 FF`), BLE
+characteristics (`ae30`/`ae01`/`ae02`), rendering (PIL, system fonts, ZX font,
+dithering, `--zx-screen`, `--dry-run`, `--test`) and the **`0xA3` state-payload
+decoding** (paper-out bit `0x10`, battery voltage).
+
+### Usage
+
+```bash
+./catprint2.sh "Hello world"
+./catprint2.sh --image photo.jpg --energy 9500
+./catprint2.sh -f program.bas --font zx --zx-cols 40 --energy 15000
+./catprint2.sh --feed          # advance paper one step
+./catprint2.sh --retract       # retract paper one step
+```
+
+### v2 options
+
+| Option | Default | Description |
+|---|---|---|
+| `--profile` | d1 | TiMini profile for the X6h: `d1` (image 5000 / text 8000) or `x6h` (9500/9500) |
+| `--energy` | – | raw thermal energy, overrides the profile |
+| `--blackening` | 3 | dot blackening 1-5 (`0xA4`) |
+| `--speed` | 1 | motor speed (`0xBD`) |
+| `--dpi` | 200 | paper DPI for `0xA1`/`0xA0` (`30 00` = 200, `48 00` = 300) |
+| `--feed-padding` | 12 | final feed value (`0xBD`) |
+| `--post-feed` | 2 | number of `0xA1` paper packets at the end of a page |
+| `--row-delay` | 0.035 | pause between scanlines, seconds (pacing) |
+| `--feed` / `--retract` | – | send a single paper-motion packet and exit |
+
+### Pacing
+
+The X6h does **not** emit `0xAE` flow-control notifications (verified on all
+notify characteristics), so TiMini-Print's chunk streaming cannot
+self-regulate and the output comes out in bursts. `print2.py` therefore paces
+**one scanline per BLE write** with a constant `--row-delay`, matching v1.
+
 ## Acknowledgements
 
+- The v2 protocol code (`print2.py`) is **based on TiMini-Print** by
+  **Dejniel** (https://github.com/Dejniel/TiMini-Print, Apache-2.0).
 - Protocol format documented by **parzivail**, *"Documenting the X6h Mini BLE
   Thermal Printer"*.
 - Inspired by the community projects **Cat-Printer** (NaitLee) and
@@ -151,6 +223,20 @@ Stampa testo e immagini sulla stampante termica **X6h** (le piccole "cat
 printer" dell'app *Tiny Print*) via **Bluetooth Low Energy**, dal Mac.
 
 Realizzato da **Home Computer Group** — parte dei laboratori HCG21.
+
+## Versioni
+
+Questo repo contiene **due** driver per la stessa stampante, che condividono
+trasporto BLE, renderizzazione e decodifica di stato:
+
+- **v1** — `print.py` / `catprint.sh`: il driver originale, autonomo.
+- **v2** — `print2.py` / `catprint2.sh`: le stesse funzioni di stampa, ma la
+  pipeline è **derivata dal progetto TiMini-Print**
+  (https://github.com/Dejniel/TiMini-Print, Apache-2.0) e segue il dialetto di
+  comandi `tiny` di TiMini per la X6h.
+
+Tutto quello che segue descrive la **v1**; differenze e opzioni della v2 sono in
+[Versione 2 — basata su TiMini-Print](#versione-2--basata-su-timini-print).
 
 ## Perché non è "semplice"
 
@@ -265,8 +351,67 @@ riga 2" | ./catprint.sh
 - `--info` legge lo stato `0xA3`: `battery` è la tensione della cella in decimi
   di volt (es. `3.7 V`), `paper` deriva dal bit di stato `0x10`.
 
+## Versione 2 — basata su TiMini-Print
+
+`print2.py` (launcher `catprint2.sh`) riusa il codice di protocollo del
+progetto **TiMini-Print** (https://github.com/Dejniel/TiMini-Print, Apache-2.0)
+e segue il suo dialetto di comandi `tiny` per la X6h. Trasporto BLE,
+renderizzazione e decodifica dello stato `0xA3` sono identici alla v1.
+
+### Differenze rispetto a `print.py` (v1)
+
+| Aspetto | v1 (`print.py`) | v2 (`print2.py`) |
+|---|---|---|
+| `0xA4` | "DPI", payload fisso `0x32` | **blackening** `0x30 + livello` (1-5) |
+| `0xBE` | "apply energy", sempre `0x01` | **print mode** `1`=testo / `0`=immagine |
+| Righe | solo raw `0xA2` (bit invertiti) | **RLE `0xBF`** se più corto, altrimenti `0xA2` |
+| `0xBD` | solo setup velocità | setup + **feed ogni 200 righe** |
+| `0xA6` | **start/end lattice** (`AA 55 …`) | non usato |
+| Fine pagina | righe bianche `0xA2` (`--feed`, `--pad-bottom`) | `0xBD` + `0xA1`x2 + `0xBD` + `0xA3` |
+| Energia | `--strength 1-7` (8000…30000) | `--profile {d1,x6h}` + `--energy` |
+| Movimento carta | – | `--feed` / `--retract` (`0xA1`/`0xA0`) |
+
+Identici in entrambe: framing dei pacchetti (`51 78 cmd 00 len crc8 FF`),
+characteristic BLE (`ae30`/`ae01`/`ae02`), renderizzazione (PIL, font di
+sistema, font ZX, dithering, `--zx-screen`, `--dry-run`, `--test`) e la
+**decodifica del payload di stato `0xA3`** (bit carta finita `0x10`, tensione
+batteria).
+
+### Uso
+
+```bash
+./catprint2.sh "Ciao mondo"
+./catprint2.sh --image foto.jpg --energy 9500
+./catprint2.sh -f programma.bas --font zx --zx-cols 40 --energy 15000
+./catprint2.sh --feed          # avanzamento carta di un passo
+./catprint2.sh --retract       # riavvolgimento carta di un passo
+```
+
+### Opzioni v2
+
+| Opzione | Default | Descrizione |
+|---|---|---|
+| `--profile` | d1 | profilo TiMini per la X6h: `d1` (immagine 5000 / testo 8000) o `x6h` (9500/9500) |
+| `--energy` | – | energia termica grezza, sovrascrive il profilo |
+| `--blackening` | 3 | blackening 1-5 (`0xA4`) |
+| `--speed` | 1 | velocità motore (`0xBD`) |
+| `--dpi` | 200 | DPI carta per `0xA1`/`0xA0` (`30 00` = 200, `48 00` = 300) |
+| `--feed-padding` | 12 | valore di feed finale (`0xBD`) |
+| `--post-feed` | 2 | numero di pacchetti carta `0xA1` a fine pagina |
+| `--row-delay` | 0.035 | pausa tra le righe in secondi (pacing) |
+| `--feed` / `--retract` | – | invia un singolo pacchetto di movimento carta ed esce |
+
+### Pacing
+
+La X6h **non** emette notifiche di flow-control `0xAE` (verificato su tutte le
+characteristic notify), quindi lo streaming a blocchi di TiMini-Print non può
+autoregolarsi e l'uscita risulta "a scatti". `print2.py` invia quindi **una
+scanline per scrittura BLE** con `--row-delay` costante, come la v1.
+
 ## Riconoscimenti
 
+- Il codice di protocollo della v2 (`print2.py`) è **basato su TiMini-Print** di
+  **Dejniel** (https://github.com/Dejniel/TiMini-Print, Apache-2.0).
 - Formato del protocollo documentato da **parzivail**, *"Documenting the X6h Mini
   BLE Thermal Printer"*.
 - Ispirato ai progetti della community **Cat-Printer** (NaitLee) e
