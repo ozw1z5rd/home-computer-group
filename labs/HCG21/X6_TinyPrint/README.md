@@ -45,9 +45,11 @@ The Bluetooth serial port `/dev/cu.X6h-xxxx` is **not** used for printing
 
 ## Requirements
 
-- macOS
 - Python 3
 - a X6h printer, powered on and in range
+- **macOS** (only for the built-in system fonts — `--font regular`/`bold`/… ).
+  On other platforms, use the platform-independent `--font zx` or `--font c64`
+  bitmap fonts.
 
 ## Install
 
@@ -80,6 +82,9 @@ line 2" | ./catprint.sh
 # "true Spectrum" variant (white on black)
 ./catprint.sh -f program.bas --font zx --zx-cols 32 --invert
 
+# BASIC listing with the Commodore 64 ROM font (40 columns)
+./catprint.sh -f program.bas --font c64 --zx-cols 40
+
 # self-test page (black bands + gradient + text)
 ./catprint.sh --test
 
@@ -94,9 +99,9 @@ line 2" | ./catprint.sh
 
 | Option | Default | Description |
 |---|---|---|
-| `--font` | regular | `regular`, `bold`, `mono`, `mono-bold`, `menlo`, `verdana`, `georgia`, `zx` |
-| `--font-size` | 32 | points (unused by `zx`) |
-| `--zx-cols` | 32 | characters per line with the ZX font (ZX screen = 32, max 48) |
+| `--font` | regular | `regular`, `bold`, `mono`, `mono-bold`, `menlo`, `verdana`, `georgia`, `zx`, `c64` |
+| `--font-size` | 32 | points (unused by `zx`/`c64`) |
+| `--zx-cols` | 32 | characters per line with the ZX/C64 bitmap fonts (ZX screen = 32, C64 screen = 40, max 48) |
 | `--invert` / `--no-invert` | auto | invert colors. In `--zx-screen` it is **on** by default; `--no-invert` turns it off |
 | `--align` | left | `left`, `center`, `right` |
 | `--strength` | 7 | darkness 1-7 (7 = darkest) |
@@ -134,6 +139,12 @@ line 2" | ./catprint.sh
 - On first run macOS may ask for **Bluetooth** permission for the terminal.
 - It's a raster printer: text is drawn as an image, so accents and Unicode work
   through the system fonts.
+- System fonts (`--font regular`/`bold`/… ) are bundled with **macOS only**.
+  On other platforms, text printing refuses with an error unless you use the
+  platform-independent `--font zx` or `--font c64` bitmap fonts.
+- `--font zx` uses the ZX Spectrum ROM font; `--font c64` uses the Commodore 64
+  ROM font (uppercase/graphics set — lowercase renders as uppercase, as on the
+  real machine). Both are stored as `zx82.ch8`/`c64.ch8`, 8x8 bitmap fonts.
 - `--zx-screen` maps a ZX screen 1:1; with the 384-dot head, 32 columns are
   1.5x, 24 columns are exactly 2x, 48 columns are 1:1.
 - Before printing, the printer state is queried: if it reports **no paper**
@@ -162,9 +173,9 @@ the `0xA3` state decoding are the same as v1.
 | Paper motion | – | `--feed` / `--retract` (`0xA1`/`0xA0`) |
 
 Identical in both: packet framing (`51 78 cmd 00 len crc8 FF`), BLE
-characteristics (`ae30`/`ae01`/`ae02`), rendering (PIL, system fonts, ZX font,
-dithering, `--zx-screen`, `--dry-run`, `--test`) and the **`0xA3` state-payload
-decoding** (paper-out bit `0x10`, battery voltage).
+characteristics (`ae30`/`ae01`/`ae02`), rendering (PIL, system fonts, ZX and
+C64 fonts, dithering, `--zx-screen`, `--dry-run`, `--test`) and the **`0xA3`
+state-payload decoding** (paper-out bit `0x10`, battery voltage).
 
 ### Usage
 
@@ -172,6 +183,7 @@ decoding** (paper-out bit `0x10`, battery voltage).
 ./catprint2.sh "Hello world"
 ./catprint2.sh --image photo.jpg --energy 9500
 ./catprint2.sh -f program.bas --font zx --zx-cols 40 --energy 15000
+./catprint2.sh -f program.bas --font c64 --zx-cols 40 --energy 15000
 ./catprint2.sh --feed          # advance paper one step
 ./catprint2.sh --retract       # retract paper one step
 ```
@@ -206,6 +218,7 @@ self-regulate and the output comes out in bursts. `print2.py` therefore paces
 - Inspired by the community projects **Cat-Printer** (NaitLee) and
   **TinyPOS-Bridge** (sajjad-amin).
 - ZX Spectrum ROM font (`zx82.ch8`) from **ivop/8x8-fonts**.
+- Commodore 64 ROM font (`c64.ch8`) from the C64 character ROM (uppercase/graphics set).
 - Thanks to the **bleak** and **Pillow** maintainers.
 - Sample ZX screens and listings belong to their respective authors and are
   included for testing only.
@@ -255,9 +268,11 @@ BLE).
 
 ## Requisiti
 
-- macOS
 - Python 3
 - una stampante X6h, accesa e nel raggio
+- **macOS** (solo per i font di sistema integrati — `--font regular`/`bold`/… ).
+  Su altre piattaforme, usa i font bitmap indipendenti dalla piattaforma
+  `--font zx` o `--font c64`.
 
 ## Installazione
 
@@ -290,6 +305,9 @@ riga 2" | ./catprint.sh
 # variante "vera" dello Spectrum (bianco su nero)
 ./catprint.sh -f programma.bas --font zx --zx-cols 32 --invert
 
+# listato in BASIC con il font ROM del Commodore 64 (40 colonne)
+./catprint.sh -f programma.bas --font c64 --zx-cols 40
+
 # pagina di collaudo (bande nere + gradiente + testo)
 ./catprint.sh --test
 
@@ -304,9 +322,9 @@ riga 2" | ./catprint.sh
 
 | Opzione | Default | Descrizione |
 |---|---|---|
-| `--font` | regular | `regular`, `bold`, `mono`, `mono-bold`, `menlo`, `verdana`, `georgia`, `zx` |
-| `--font-size` | 32 | punti (non usato da `zx`) |
-| `--zx-cols` | 32 | caratteri per riga col font ZX (schermata ZX = 32, max 48) |
+| `--font` | regular | `regular`, `bold`, `mono`, `mono-bold`, `menlo`, `verdana`, `georgia`, `zx`, `c64` |
+| `--font-size` | 32 | punti (non usato da `zx`/`c64`) |
+| `--zx-cols` | 32 | caratteri per riga coi font bitmap ZX/C64 (schermata ZX = 32, schermata C64 = 40, max 48) |
 | `--invert` / `--no-invert` | auto | inverti i colori. In `--zx-screen` è **attivo** di default; `--no-invert` lo disattiva |
 | `--align` | left | `left`, `center`, `right` |
 | `--strength` | 7 | intensità 1-7 (7 = più scuro) |
@@ -344,6 +362,14 @@ riga 2" | ./catprint.sh
 - Alla prima esecuzione macOS può chiedere il permesso **Bluetooth** al terminale.
 - È una stampante raster: il testo è disegnato come immagine, quindi accenti e
   Unicode funzionano tramite i font di sistema.
+- I font di sistema (`--font regular`/`bold`/… ) sono inclusi **solo in macOS**.
+  Su altre piattaforme, la stampa del testo viene rifiutata con un errore a
+  meno che si usino i font bitmap indipendenti dalla piattaforma `--font zx` o
+  `--font c64`.
+- `--font zx` usa il font ROM dello ZX Spectrum; `--font c64` usa il font ROM
+  del Commodore 64 (set maiuscole/grafica — le minuscole vengono rese come
+  maiuscole, come sulla macchina reale). Entrambi sono salvati come
+  `zx82.ch8`/`c64.ch8`, font bitmap 8x8.
 - `--zx-screen` mappa la schermata ZX 1:1; con la testina da 384 dot, 32 colonne
   sono 1.5x, 24 colonne sono esattamente 2x, 48 colonne sono 1:1.
 - Prima di stampare viene letto lo stato: se la stampante segnala **carta
@@ -373,7 +399,7 @@ renderizzazione e decodifica dello stato `0xA3` sono identici alla v1.
 
 Identici in entrambe: framing dei pacchetti (`51 78 cmd 00 len crc8 FF`),
 characteristic BLE (`ae30`/`ae01`/`ae02`), renderizzazione (PIL, font di
-sistema, font ZX, dithering, `--zx-screen`, `--dry-run`, `--test`) e la
+sistema, font ZX e C64, dithering, `--zx-screen`, `--dry-run`, `--test`) e la
 **decodifica del payload di stato `0xA3`** (bit carta finita `0x10`, tensione
 batteria).
 
@@ -383,6 +409,7 @@ batteria).
 ./catprint2.sh "Ciao mondo"
 ./catprint2.sh --image foto.jpg --energy 9500
 ./catprint2.sh -f programma.bas --font zx --zx-cols 40 --energy 15000
+./catprint2.sh -f programma.bas --font c64 --zx-cols 40 --energy 15000
 ./catprint2.sh --feed          # avanzamento carta di un passo
 ./catprint2.sh --retract       # riavvolgimento carta di un passo
 ```
@@ -417,6 +444,7 @@ scanline per scrittura BLE** con `--row-delay` costante, come la v1.
 - Ispirato ai progetti della community **Cat-Printer** (NaitLee) e
   **TinyPOS-Bridge** (sajjad-amin).
 - Font ROM dello ZX Spectrum (`zx82.ch8`) da **ivop/8x8-fonts**.
+- Font ROM del Commodore 64 (`c64.ch8`) dal character ROM C64 (set maiuscole/grafica).
 - Grazie ai manutentori di **bleak** e **Pillow**.
 - Le schermate e i listati ZX di esempio appartengono ai rispettivi autori e
   sono inclusi solo a scopo di test.

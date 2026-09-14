@@ -48,21 +48,23 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 try:
     from bleak import BleakClient, BleakScanner
 except ImportError:
-    sys.exit("Missing 'bleak'. Install dependencies with: pip install -r requirements.txt")
+    sys.exit(
+        "Missing 'bleak'. Install dependencies with: pip install -r requirements.txt"
+    )
 
 # --- tiny protocol (TiMini-Print compatible) ------------------------------
 
 MAGIC = b"\x51\x78"
-CMD_RETRACT = 0xA0      # manual retract: 30 00 (200 dpi) / 48 00 (300 dpi)
-CMD_PAPER = 0xA1        # paper position / manual feed: 30 00 (200 dpi) / 48 00 (300 dpi)
-CMD_RASTER = 0xA2       # raw scanline, LSB-first
-CMD_STATE = 0xA3        # device state query/reply
-CMD_BLACKENING = 0xA4   # payload 0x30 + level (1..5)
-CMD_ENERGY = 0xAF       # payload uint16 LE
-CMD_NOTIFY = 0xAE       # buffer notification (payload 0x10 pause / 0x00 resume)
-CMD_SPEED = 0xBD        # feed/speed, payload = speed byte
-CMD_MODE = 0xBE         # print mode: 1 text / 0 image
-CMD_RASTER_RLE = 0xBF   # run-length encoded scanline
+CMD_RETRACT = 0xA0  # manual retract: 30 00 (200 dpi) / 48 00 (300 dpi)
+CMD_PAPER = 0xA1  # paper position / manual feed: 30 00 (200 dpi) / 48 00 (300 dpi)
+CMD_RASTER = 0xA2  # raw scanline, LSB-first
+CMD_STATE = 0xA3  # device state query/reply
+CMD_BLACKENING = 0xA4  # payload 0x30 + level (1..5)
+CMD_ENERGY = 0xAF  # payload uint16 LE
+CMD_NOTIFY = 0xAE  # buffer notification (payload 0x10 pause / 0x00 resume)
+CMD_SPEED = 0xBD  # feed/speed, payload = speed byte
+CMD_MODE = 0xBE  # print mode: 1 text / 0 image
+CMD_RASTER_RLE = 0xBF  # run-length encoded scanline
 
 FLOW_PAUSE = b"\x51\x78\xae\x01\x01\x00\x10\x70\xff"
 FLOW_RESUME = b"\x51\x78\xae\x01\x01\x00\x00\x00\xff"
@@ -98,7 +100,11 @@ FONTS = {
     "georgia": "/System/Library/Fonts/Supplemental/Georgia.ttf",
 }
 
+# The system fonts in FONTS are bundled with macOS only.
+IS_MACOS = sys.platform == "darwin"
+
 ZX_FONT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zx82.ch8")
+C64_FONT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "c64.ch8")
 
 
 def crc8(data):
@@ -120,8 +126,13 @@ def command(cmd, payload=b""):
     payload = bytes(payload)
     if len(payload) > 0xFF:
         raise ValueError("payload too large (%d > 255)" % len(payload))
-    return (MAGIC + bytes([cmd, 0x00, len(payload), 0x00]) + payload
-            + bytes([crc8(payload)]) + b"\xff")
+    return (
+        MAGIC
+        + bytes([cmd, 0x00, len(payload), 0x00])
+        + payload
+        + bytes([crc8(payload)])
+        + b"\xff"
+    )
 
 
 def paper_payload(dpi):
@@ -150,7 +161,7 @@ class PacketDecoder:
             marker = self._buffer.find(MAGIC)
             if marker < 0:
                 keep = 1 if self._buffer[-1:] == MAGIC[:1] else 0
-                del self._buffer[:len(self._buffer) - keep]
+                del self._buffer[: len(self._buffer) - keep]
                 break
             if marker:
                 del self._buffer[:marker]
@@ -161,7 +172,7 @@ class PacketDecoder:
             if len(self._buffer) < total:
                 break
             raw = bytes(self._buffer[:total])
-            payload = raw[6:6 + length]
+            payload = raw[6 : 6 + length]
             if raw[-1] != 0xFF or crc8(payload) != raw[-2]:
                 del self._buffer[0]
                 continue
@@ -208,7 +219,7 @@ def build_scanline_segments(rows, width, width_bytes, height, speed):
     """Yield one Qx packet per scanline (plus every 200th line feed)."""
     segments = []
     for row in range(height):
-        line = rows[row * width_bytes:(row + 1) * width_bytes]
+        line = rows[row * width_bytes : (row + 1) * width_bytes]
         rle = rle_encode_row(line, width)
         if len(rle) <= width_bytes:
             segments.append(command(CMD_RASTER_RLE, rle))
@@ -219,8 +230,9 @@ def build_scanline_segments(rows, width, width_bytes, height, speed):
     return segments
 
 
-def build_job_segments(rows, width, *, is_text, energy, speed, blackening, feed_padding,
-                       dev_dpi, post_feed):
+def build_job_segments(
+    rows, width, *, is_text, energy, speed, blackening, feed_padding, dev_dpi, post_feed
+):
     """Split the job in (header, scanlines, trailer) so scanlines can be paced."""
     width_bytes = (width + 7) // 8
     height = len(rows) // width_bytes if width_bytes else 0
@@ -243,20 +255,34 @@ def build_job_segments(rows, width, *, is_text, energy, speed, blackening, feed_
     return bytes(header), lines, bytes(trailer)
 
 
-def build_job(rows, width, *, is_text, energy, speed, blackening, feed_padding,
-              dev_dpi, post_feed):
+def build_job(
+    rows, width, *, is_text, energy, speed, blackening, feed_padding, dev_dpi, post_feed
+):
     """Build the whole print job, byte-compatible with TiMini-Print's X6h job."""
     header, lines, trailer = build_job_segments(
-        rows, width, is_text=is_text, energy=energy, speed=speed,
-        blackening=blackening, feed_padding=feed_padding, dev_dpi=dev_dpi,
-        post_feed=post_feed)
+        rows,
+        width,
+        is_text=is_text,
+        energy=energy,
+        speed=speed,
+        blackening=blackening,
+        feed_padding=feed_padding,
+        dev_dpi=dev_dpi,
+        post_feed=post_feed,
+    )
     return header + b"".join(lines) + trailer
 
 
 # --- content rendering ----------------------------------------------------
 
+
 def load_font(family, size):
     path = FONTS.get(family, family)
+    if not IS_MACOS:
+        raise SystemExit(
+            "System fonts require macOS. On %s, use --font zx or --font c64 "
+            "(the bundled 8x8 bitmap fonts work on any platform)." % sys.platform
+        )
     if not os.path.exists(path):
         raise SystemExit("Font not found: %s" % path)
     return ImageFont.truetype(path, size)
@@ -279,7 +305,9 @@ def wrap_text(draw, text, font, max_width):
                     lines.append(current)
                 while draw.textlength(word, font=font) > max_width and len(word) > 1:
                     cut = len(word)
-                    while cut > 1 and draw.textlength(word[:cut], font=font) > max_width:
+                    while (
+                        cut > 1 and draw.textlength(word[:cut], font=font) > max_width
+                    ):
                         cut -= 1
                     lines.append(word[:cut])
                     word = word[cut:]
@@ -288,8 +316,9 @@ def wrap_text(draw, text, font, max_width):
     return lines
 
 
-def render_text(text, font_family, font_size, align, width, line_spacing,
-                margin_x, margin_y):
+def render_text(
+    text, font_family, font_size, align, width, line_spacing, margin_x, margin_y
+):
     font = load_font(font_family, font_size)
     probe = Image.new("L", (width, 8), 255)
     draw = ImageDraw.Draw(probe)
@@ -298,7 +327,9 @@ def render_text(text, font_family, font_size, align, width, line_spacing,
     ascent, descent = font.getmetrics()
     line_height = ascent + descent
     gap = int(line_height * (line_spacing - 1))
-    total_h = margin_y * 2 + max(1, len(lines)) * line_height + max(0, len(lines) - 1) * gap
+    total_h = (
+        margin_y * 2 + max(1, len(lines)) * line_height + max(0, len(lines) - 1) * gap
+    )
 
     img = Image.new("L", (width, total_h), 255)
     draw = ImageDraw.Draw(img)
@@ -306,7 +337,11 @@ def render_text(text, font_family, font_size, align, width, line_spacing,
     for line in lines:
         if align != "left":
             line_w = draw.textlength(line, font=font)
-            x = int((width - line_w) / 2) if align == "center" else int(width - line_w - margin_x)
+            x = (
+                int((width - line_w) / 2)
+                if align == "center"
+                else int(width - line_w - margin_x)
+            )
         else:
             x = margin_x
         draw.text((x, y), line, font=font, fill=0)
@@ -321,16 +356,26 @@ def to_bw_image(img, dither=False):
     if dither:
         return ImageOps.invert(img.convert("1", dither=Image.Dither.FLOYDSTEINBERG))
     return img.point(lambda p: 255 if p < 128 else 0).convert(
-        "1", dither=Image.Dither.NONE)
+        "1", dither=Image.Dither.NONE
+    )
 
 
-def load_zx_font():
-    with open(ZX_FONT_FILE, "rb") as fh:
+def load_font_data(path):
+    with open(path, "rb") as fh:
         return fh.read()
 
 
-def render_zx_text(text, width, cols=32, margin=0, align="left"):
-    font = load_zx_font()
+def load_zx_font():
+    return load_font_data(ZX_FONT_FILE)
+
+
+def load_c64_font():
+    return load_font_data(C64_FONT_FILE)
+
+
+def render_bitmap_font_text(text, font, width, cols=32, align="left"):
+    """Render text using an 8x8 bitmap font (8 bytes per glyph, ASCII 32..127).
+    `cols` = characters per line, then scale to `width`."""
     native = cols * 8
     lines = []
     for raw in text.splitlines():
@@ -366,6 +411,14 @@ def render_zx_text(text, width, cols=32, margin=0, align="left"):
     return img.resize((width, max(1, round(height * factor))), Image.NEAREST)
 
 
+def render_zx_text(text, width, cols=32, margin=0, align="left"):
+    return render_bitmap_font_text(text, load_zx_font(), width, cols, align)
+
+
+def render_c64_text(text, width, cols=32, margin=0, align="left"):
+    return render_bitmap_font_text(text, load_c64_font(), width, cols, align)
+
+
 def prepare_image(path, width):
     img = Image.open(path).convert("L")
     ratio = width / img.width
@@ -393,6 +446,7 @@ def build_test_image(width):
 
 
 # --- BLE driver -----------------------------------------------------------
+
 
 class Printer:
     def __init__(self, client, verbose=False, row_delay=DEFAULT_ROW_DELAY):
@@ -426,15 +480,21 @@ class Printer:
                 self.state = body
                 self._report_state(body)
             elif self.verbose and body:
-                print("  notify: %s (op=%02X flags=%02X)" % (payload.hex(), opcode, flags),
-                      file=sys.stderr)
+                print(
+                    "  notify: %s (op=%02X flags=%02X)"
+                    % (payload.hex(), opcode, flags),
+                    file=sys.stderr,
+                )
 
     def _report_state(self, state):
         if not self.verbose or len(state) < 3:
             return
         paper = "OUT" if state[1] & 0x10 else "ok"
-        print("  state: flags=0x%02X battery=%d.%d V paper=%s"
-              % (state[1], state[2] // 10, state[2] % 10, paper), file=sys.stderr)
+        print(
+            "  state: flags=0x%02X battery=%d.%d V paper=%s"
+            % (state[1], state[2] // 10, state[2] % 10, paper),
+            file=sys.stderr,
+        )
 
     async def start(self):
         """Subscribe to the printer's notify characteristic (ae02)."""
@@ -444,7 +504,9 @@ class Printer:
             self.notify_uuids.append(RX_UUID)
         except Exception as exc:  # noqa: BLE001
             if self.verbose:
-                print("  notify subscribe failed %s: %s" % (RX_UUID, exc), file=sys.stderr)
+                print(
+                    "  notify subscribe failed %s: %s" % (RX_UUID, exc), file=sys.stderr
+                )
         if self.verbose:
             print("  subscribed: %s" % ", ".join(self.notify_uuids), file=sys.stderr)
 
@@ -471,7 +533,9 @@ class Printer:
             self.max_pause_wait = max(self.max_pause_wait, time.monotonic() - started)
         limit = self._resolve_max_write()
         for offset in range(0, len(data), limit):
-            await self.client.write_gatt_char(TX_UUID, data[offset:offset + limit], response=False)
+            await self.client.write_gatt_char(
+                TX_UUID, data[offset : offset + limit], response=False
+            )
 
     async def _send_job(self, header, lines, trailer):
         await self._write(header)
@@ -494,15 +558,36 @@ class Printer:
             await asyncio.sleep(0.05)
         return None
 
-    async def print_bitmap(self, rows, width, *, is_text, energy, speed, blackening,
-                           feed_padding, dev_dpi, post_feed):
+    async def print_bitmap(
+        self,
+        rows,
+        width,
+        *,
+        is_text,
+        energy,
+        speed,
+        blackening,
+        feed_padding,
+        dev_dpi,
+        post_feed,
+    ):
         header, lines, trailer = build_job_segments(
-            rows, width, is_text=is_text, energy=energy, speed=speed,
-            blackening=blackening, feed_padding=feed_padding, dev_dpi=dev_dpi,
-            post_feed=post_feed)
+            rows,
+            width,
+            is_text=is_text,
+            energy=energy,
+            speed=speed,
+            blackening=blackening,
+            feed_padding=feed_padding,
+            dev_dpi=dev_dpi,
+            post_feed=post_feed,
+        )
         if self.verbose:
-            print("  %d scanlines, row delay %.1f ms"
-                  % (len(lines), self.row_delay * 1000), file=sys.stderr)
+            print(
+                "  %d scanlines, row delay %.1f ms"
+                % (len(lines), self.row_delay * 1000),
+                file=sys.stderr,
+            )
         await self._send_job(header, lines, trailer)
 
     async def feed(self, dpi=200):
@@ -516,6 +601,7 @@ class Printer:
 
 # --- scanning / connection ------------------------------------------------
 
+
 async def find_device(name):
     print("Scanning Bluetooth...", file=sys.stderr)
     device = await BleakScanner.find_device_by_name(name, timeout=15)
@@ -524,7 +610,10 @@ async def find_device(name):
     devices = await BleakScanner.discover(timeout=8)
     for dev in devices:
         dev_name = (dev.name or "").lower()
-        if any(k in dev_name for k in ("x6", "x5", "x7", "print", "cat", "gb0", "gt0", "mx0")):
+        if any(
+            k in dev_name
+            for k in ("x6", "x5", "x7", "print", "cat", "gb0", "gt0", "mx0")
+        ):
             print("Using device: %s" % dev.name, file=sys.stderr)
             return dev
     return None
@@ -532,7 +621,7 @@ async def find_device(name):
 
 async def list_devices():
     devices = await BleakScanner.discover(timeout=10)
-    for dev in sorted(devices, key=lambda d: (d.name or "~")):
+    for dev in sorted(devices, key=lambda d: d.name or "~"):
         print("%-40s %s" % (dev.address, dev.name or "(no name)"))
 
 
@@ -556,7 +645,8 @@ async def show_info(args):
     if target is None:
         raise SystemExit(
             "Printer '%s' not found. Is it on and NOT already connected "
-            "to the phone app? (BLE allows one connection at a time)" % args.device)
+            "to the phone app? (BLE allows one connection at a time)" % args.device
+        )
     replies = []
 
     async with BleakClient(target, timeout=30) as client:
@@ -565,8 +655,10 @@ async def show_info(args):
             print("  service %s" % service.uuid)
         await client.start_notify(RX_UUID, lambda _c, d: replies.append(bytes(d)))
         await asyncio.sleep(0.4)
-        for label, cmd, payload in (("state", CMD_STATE, b"\x00"),
-                                    ("info", 0xA8, b"\x00")):
+        for label, cmd, payload in (
+            ("state", CMD_STATE, b"\x00"),
+            ("info", 0xA8, b"\x00"),
+        ):
             await client.write_gatt_char(TX_UUID, command(cmd, payload), response=False)
             await asyncio.sleep(0.6)
             raw = " ".join(r.hex() for r in replies) or "(no reply)"
@@ -578,14 +670,28 @@ async def show_info(args):
                 print("  %-8s    payload: %s" % ("", body.hex(" ")))
                 if cmd == CMD_STATE and len(body) >= 3:
                     paper = "OUT" if body[1] & 0x10 else "ok"
-                    print("  %-8s    counter=%d  flags=0x%02X  paper=%s"
-                          % ("", body[0], body[1], paper))
+                    print(
+                        "  %-8s    counter=%d  flags=0x%02X  paper=%s"
+                        % ("", body[0], body[1], paper)
+                    )
                     volts = body[2]
-                    bars = (5 if volts >= 41 else 4 if volts >= 39 else
-                            3 if volts >= 38 else 2 if volts >= 37 else
-                            1 if volts >= 35 else 0)
-                    print("  %-8s    battery=%d.%d V (%d/5)"
-                          % ("", volts // 10, volts % 10, bars))
+                    bars = (
+                        5
+                        if volts >= 41
+                        else 4
+                        if volts >= 39
+                        else 3
+                        if volts >= 38
+                        else 2
+                        if volts >= 37
+                        else 1
+                        if volts >= 35
+                        else 0
+                    )
+                    print(
+                        "  %-8s    battery=%d.%d V (%d/5)"
+                        % ("", volts // 10, volts % 10, bars)
+                    )
             for text in pretty_ascii(b"".join(replies)):
                 print("  %-8s    text: %r" % ("", text))
             replies.clear()
@@ -608,12 +714,16 @@ async def connect_client(args):
                 return client
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
-                print("Attempt %d: connection failed (%s)" % (attempt, exc),
-                      file=sys.stderr)
+                print(
+                    "Attempt %d: connection failed (%s)" % (attempt, exc),
+                    file=sys.stderr,
+                )
         if attempt < args.retries:
             await asyncio.sleep(2)
-    raise SystemExit("Cannot connect to '%s'%s" % (
-        device_name, ": %s" % last_error if last_error else ""))
+    raise SystemExit(
+        "Cannot connect to '%s'%s"
+        % (device_name, ": %s" % last_error if last_error else "")
+    )
 
 
 async def paper_motion(args):
@@ -664,10 +774,24 @@ async def run(args):
             img = prepare_image(args.image, args.width)
     elif text:
         if args.font == "zx":
-            img = render_zx_text(text, args.width, args.zx_cols, args.margin, args.align)
+            img = render_zx_text(
+                text, args.width, args.zx_cols, args.margin, args.align
+            )
+        elif args.font == "c64":
+            img = render_c64_text(
+                text, args.width, args.zx_cols, args.margin, args.align
+            )
         else:
-            img = render_text(text, args.font, args.font_size, args.align, args.width,
-                              args.line_spacing, args.margin, args.margin_v)
+            img = render_text(
+                text,
+                args.font,
+                args.font_size,
+                args.align,
+                args.width,
+                args.line_spacing,
+                args.margin,
+                args.margin_v,
+            )
     else:
         raise SystemExit("No text. Use --help.")
 
@@ -677,8 +801,7 @@ async def run(args):
 
     vscale = 1.0 if args.zx_screen else args.vscale
     if vscale != 1.0:
-        img = img.resize((img.width, max(1, round(img.height * vscale))),
-                         Image.LANCZOS)
+        img = img.resize((img.width, max(1, round(img.height * vscale))), Image.LANCZOS)
 
     dither = args.dither and bool(args.image)
     bw = to_bw_image(img, dither)
@@ -694,7 +817,11 @@ async def run(args):
         return
 
     profile = PROFILES[args.profile]
-    energy = args.energy if args.energy is not None else profile["text" if is_text else "image"]
+    energy = (
+        args.energy
+        if args.energy is not None
+        else profile["text" if is_text else "image"]
+    )
 
     device_name = args.device
     client = await connect_client(args)
@@ -711,19 +838,29 @@ async def run(args):
             flags = state[1] if len(state) > 1 else 0
             level = state[2] if len(state) > 2 else -1
             if args.verbose:
-                print("  state: flags=0x%02X level=%d" % (flags, level),
-                      file=sys.stderr)
+                print(
+                    "  state: flags=0x%02X level=%d" % (flags, level), file=sys.stderr
+                )
             if flags & 0x10:
                 raise SystemExit("Printer reports NO PAPER. Load paper and retry.")
 
-        await printer.print_bitmap(rows, width, is_text=is_text, energy=energy,
-                                   speed=args.speed, blackening=args.blackening,
-                                   feed_padding=args.feed_padding, dev_dpi=args.dpi,
-                                   post_feed=args.post_feed)
+        await printer.print_bitmap(
+            rows,
+            width,
+            is_text=is_text,
+            energy=energy,
+            speed=args.speed,
+            blackening=args.blackening,
+            feed_padding=args.feed_padding,
+            dev_dpi=args.dpi,
+            post_feed=args.post_feed,
+        )
         if args.verbose:
-            print("  flow: %d pauses, %d resumes, max wait %.2f s"
-                  % (printer.pauses, printer.resumes, printer.max_pause_wait),
-                  file=sys.stderr)
+            print(
+                "  flow: %d pauses, %d resumes, max wait %.2f s"
+                % (printer.pauses, printer.resumes, printer.max_pause_wait),
+                file=sys.stderr,
+            )
         await asyncio.sleep(1.0)
         if args.delay:
             await asyncio.sleep(args.delay)
@@ -738,64 +875,141 @@ async def run(args):
 def build_parser():
     p = argparse.ArgumentParser(
         description="Print text/images on the X6h over BLE, using TiMini-Print's "
-                    "tiny protocol behaviour (state payload still decoded).",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        "tiny protocol behaviour (state payload still decoded).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     p.add_argument("text", nargs="*", help="text to print")
     p.add_argument("-f", "--file", help="read the text from a file")
     p.add_argument("--image", help="print an image (png/jpg/...)")
-    p.add_argument("--test", action="store_true",
-                   help="print a test page (black bands, gradient, text)")
+    p.add_argument(
+        "--test",
+        action="store_true",
+        help="print a test page (black bands, gradient, text)",
+    )
     p.add_argument("--device", default=DEFAULT_NAME, help="printer Bluetooth name")
     p.add_argument("--address", help="device address/UUID (skips scanning)")
     p.add_argument("--list", action="store_true", help="list BLE devices and exit")
-    p.add_argument("--info", action="store_true",
-                   help="connect and read printer status/info, then exit")
+    p.add_argument(
+        "--info",
+        action="store_true",
+        help="connect and read printer status/info, then exit",
+    )
     paper = p.add_mutually_exclusive_group()
-    paper.add_argument("--feed", action="store_true",
-                       help="advance paper a step (0xA1) and exit")
-    paper.add_argument("--retract", action="store_true",
-                       help="retract paper a step (0xA0) and exit")
-    p.add_argument("--font", default="regular", choices=sorted(set(FONTS) | {"zx"}),
-                   help="font ('zx' = ZX Spectrum font)")
-    p.add_argument("--zx-cols", type=int, default=32,
-                   help="characters per line with the ZX font (ZX screen = 32)")
+    paper.add_argument(
+        "--feed", action="store_true", help="advance paper a step (0xA1) and exit"
+    )
+    paper.add_argument(
+        "--retract", action="store_true", help="retract paper a step (0xA0) and exit"
+    )
+    p.add_argument(
+        "--font",
+        default="regular",
+        choices=sorted(set(FONTS) | {"zx", "c64"}),
+        help="font ('zx' = ZX Spectrum font, 'c64' = Commodore 64 font)",
+    )
+    p.add_argument(
+        "--zx-cols",
+        type=int,
+        default=32,
+        help="characters per line with the zx/c64 bitmap fonts (32 = ZX, 40 = C64)",
+    )
     grp = p.add_mutually_exclusive_group()
-    grp.add_argument("--invert", action="store_true", dest="invert", default=None,
-                     help="invert (white on black)")
-    grp.add_argument("--no-invert", action="store_false", dest="invert",
-                     help="do not invert, even in --zx-screen mode")
+    grp.add_argument(
+        "--invert",
+        action="store_true",
+        dest="invert",
+        default=None,
+        help="invert (white on black)",
+    )
+    grp.add_argument(
+        "--no-invert",
+        action="store_false",
+        dest="invert",
+        help="do not invert, even in --zx-screen mode",
+    )
     p.add_argument("--font-size", type=int, default=32, help="font size in points")
     p.add_argument("--align", default="left", choices=["left", "center", "right"])
-    p.add_argument("--width", type=int, default=PAPER_WIDTH, help="printhead width in pixels")
-    p.add_argument("--vscale", type=float, default=1.0,
-                   help="vertical scale compensation (1.0 = real proportions)")
+    p.add_argument(
+        "--width", type=int, default=PAPER_WIDTH, help="printhead width in pixels"
+    )
+    p.add_argument(
+        "--vscale",
+        type=float,
+        default=1.0,
+        help="vertical scale compensation (1.0 = real proportions)",
+    )
     p.add_argument("--line-spacing", type=float, default=1.15, help="line spacing")
     p.add_argument("--margin", type=int, default=8, help="horizontal margin in pixels")
     p.add_argument("--margin-v", type=int, default=8, help="vertical margin in pixels")
-    p.add_argument("--profile", default="d1", choices=sorted(PROFILES),
-                   help="TiMini-Print profile for the X6h (d1 = advertised 'X6h')")
-    p.add_argument("--energy", type=int, default=None,
-                   help="raw thermal energy, overrides --profile defaults")
-    p.add_argument("--blackening", type=int, default=3, choices=range(1, 6),
-                   help="dot blackening level 1-5 (0xA4)")
+    p.add_argument(
+        "--profile",
+        default="d1",
+        choices=sorted(PROFILES),
+        help="TiMini-Print profile for the X6h (d1 = advertised 'X6h')",
+    )
+    p.add_argument(
+        "--energy",
+        type=int,
+        default=None,
+        help="raw thermal energy, overrides --profile defaults",
+    )
+    p.add_argument(
+        "--blackening",
+        type=int,
+        default=3,
+        choices=range(1, 6),
+        help="dot blackening level 1-5 (0xA4)",
+    )
     p.add_argument("--speed", type=int, default=1, help="motor speed (0xBD)")
-    p.add_argument("--dpi", type=int, default=200, choices=(200, 300),
-                   help="paper DPI for the 0xA1 command")
-    p.add_argument("--feed-padding", type=int, default=12,
-                   help="final feed value (0xBD) before/after the paper commands")
-    p.add_argument("--post-feed", type=int, default=2,
-                   help="number of paper-position (0xA1) packets at end of page")
-    p.add_argument("--row-delay", type=float, default=DEFAULT_ROW_DELAY,
-                   help="pause between scanlines in seconds (pacing)")
+    p.add_argument(
+        "--dpi",
+        type=int,
+        default=200,
+        choices=(200, 300),
+        help="paper DPI for the 0xA1 command",
+    )
+    p.add_argument(
+        "--feed-padding",
+        type=int,
+        default=12,
+        help="final feed value (0xBD) before/after the paper commands",
+    )
+    p.add_argument(
+        "--post-feed",
+        type=int,
+        default=2,
+        help="number of paper-position (0xA1) packets at end of page",
+    )
+    p.add_argument(
+        "--row-delay",
+        type=float,
+        default=DEFAULT_ROW_DELAY,
+        help="pause between scanlines in seconds (pacing)",
+    )
     p.add_argument("--retries", type=int, default=4, help="connection attempts")
-    p.add_argument("--delay", type=float, default=0.0,
-                   help="seconds to wait before disconnecting the printer")
-    p.add_argument("--no-dither", action="store_false", dest="dither",
-                   help="disable dithering (on by default for images)")
-    p.add_argument("--zx-screen", action="store_true",
-                   help="treat the image as a ZX 256x192 screen (inverted, 1:1 pixels)")
-    p.add_argument("--dry-run", metavar="FILE.pbm", help="only generate the preview, do not print")
-    p.add_argument("-v", "--verbose", action="store_true", help="show printer notifications")
+    p.add_argument(
+        "--delay",
+        type=float,
+        default=0.0,
+        help="seconds to wait before disconnecting the printer",
+    )
+    p.add_argument(
+        "--no-dither",
+        action="store_false",
+        dest="dither",
+        help="disable dithering (on by default for images)",
+    )
+    p.add_argument(
+        "--zx-screen",
+        action="store_true",
+        help="treat the image as a ZX 256x192 screen (inverted, 1:1 pixels)",
+    )
+    p.add_argument(
+        "--dry-run", metavar="FILE.pbm", help="only generate the preview, do not print"
+    )
+    p.add_argument(
+        "-v", "--verbose", action="store_true", help="show printer notifications"
+    )
     return p
 
 
